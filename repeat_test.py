@@ -38,13 +38,18 @@ def run_test(cmd):
     return test_result, test_output
 
 
-def repeat_test(cmd, n_times):
+def repeat_test(cmd, n_times, fail_log_file=None):
     for i in range(n_times):
         test_result, test_output = run_test(cmd)
         print(f"== {i}: {test_result}")
         if test_result != "OK":
             for line in test_output:
                 print(line)
+            if fail_log_file:
+                with open(fail_log_file, "w") as f:
+                    for line in test_output:
+                        f.write(f"{line}\n")
+                print(f"== fail log in file {fail_log_file}")
             break
 
 if __name__ == "__main__":
@@ -71,10 +76,16 @@ if __name__ == "__main__":
     result_pattern = config["test"]["result_pattern"]
     ok_pattern = config["test"]["ok_pattern"]
     
+    if "fail_log_file" in config["test"]:
+        fail_log_file = config["test"]["fail_log_file"]
+    else:
+        fail_log_file = None
+
     print(f"cmd: {cmd}")
     print(f"result_pattern: {result_pattern}")
     print(f"ok_pattern: {ok_pattern}")
     print(f"n_times: {n_times}")
-    
-    repeat_test(cmd, n_times)
+    print(f"fail_log_file: {fail_log_file}")
+
+    repeat_test(cmd, n_times, fail_log_file=fail_log_file)
 
