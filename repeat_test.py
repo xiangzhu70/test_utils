@@ -8,10 +8,11 @@ import argparse
 import configparser
 
 
-def run_test(cmd):
+def run_test(cmd, parse_patterns=None):
 
     test_result = None
     test_output = []
+    parsed_results = []
     process = subprocess.Popen(shlex.split(cmd),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT)
@@ -25,6 +26,14 @@ def run_test(cmd):
         line = line.decode().strip()
         test_output.append(line)
 
+        if parse_patterns:
+            for (key_name, parse_pattern) in parse_patterns:
+                m = re.search(parse_pattern, line)
+                if not m:
+                    continue
+                val = m.group(key_name)
+                parsed_results.append((key_name, val))
+ 
         m = re.search(result_pattern, line)
         if not m:
             continue
@@ -35,14 +44,17 @@ def run_test(cmd):
         else:
             test_result = "FAIL"
 
-    return test_result, test_output
+    return test_result, test_output, parsed_results
 
 
-def repeat_test(cmd, n_times, n_failures=1, fail_log_file=None):
+def repeat_test(cmd, n_times, n_failures=1, fail_log_file=None, parse_patterns=None):
     n_failures_found = 0
     for i in range(n_times):
-        test_result, test_output = run_test(cmd)
-        print(f"== {i}: {test_result}")
+        test_result, test_output, parsed_results = run_test(cmd, parse_patterns=parse_patterns)
+        output_line = f"== {i}: {test_result}"
+        for (key, val) in parsed_results:
+            output_line += f", {key}={val}"
+        print(output_line)
         if test_result != "OK":
             if fail_log_file:
                 if n_failures > 1:
@@ -91,6 +103,17 @@ if __name__ == "__main__":
     else:
         n_failures = 1
 
+    parse_patterns = []
+    if "parse" in config:
+        for key in config["parse"]:
+            m = re.search(r"<(?P<key_name>\w+)>", config["parse"][key])
+            if not m:
+                print(f"key name not found from the parse pattern key {key}")
+                continue
+            key_name = m.group("key_name")
+            parse_patterns.append((key_name, config["parse"][key]))
+
+    print("[Test configurations]")
     print(f"cmd: {cmd}")
     print(f"result_pattern: {result_pattern}")
     print(f"ok_pattern: {ok_pattern}")
@@ -98,5 +121,13 @@ if __name__ == "__main__":
     print(f"fail_log_file: {fail_log_file}")
     print(f"n_failures: {n_failures}")
 
-    repeat_test(cmd, n_times, n_failures=n_failures, fail_log_file=fail_log_file)
+    if parse_patterns:
+        print("\n[Parse patterns]")
+        for (key, pattern) in parse_patterns:
+            print(f"  {key}")
+        print("\n")
+
+    repeat_test(cmd, n_times,
+        n_failures=n_failures, fail_log_file=fail_log_file,
+        parse_patterns = parse_patterns)
 
