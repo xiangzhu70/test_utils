@@ -38,19 +38,24 @@ def run_test(cmd):
     return test_result, test_output
 
 
-def repeat_test(cmd, n_times, fail_log_file=None):
+def repeat_test(cmd, n_times, n_failures=1, fail_log_file=None):
+    n_failures_found = 0
     for i in range(n_times):
         test_result, test_output = run_test(cmd)
         print(f"== {i}: {test_result}")
         if test_result != "OK":
-            for line in test_output:
-                print(line)
             if fail_log_file:
-                with open(fail_log_file, "w") as f:
+                if n_failures > 1:
+                    fail_log = f"{fail_log_file}_{n_failures_found}"
+                else:
+                    fail_log = fail_log_file
+                with open(fail_log, "w") as f:
                     for line in test_output:
                         f.write(f"{line}\n")
-                print(f"== fail log in file {fail_log_file}")
-            break
+                print(f"== fail log in file {fail_log}")
+            n_failures_found += 1
+            if n_failures_found >= n_failures:
+                break
 
 if __name__ == "__main__":
 
@@ -81,11 +86,17 @@ if __name__ == "__main__":
     else:
         fail_log_file = None
 
+    if "n_failures" in config["test"]:
+        n_failures = config["test"]["n_failures"]
+    else:
+        n_failures = 1
+
     print(f"cmd: {cmd}")
     print(f"result_pattern: {result_pattern}")
     print(f"ok_pattern: {ok_pattern}")
     print(f"n_times: {n_times}")
     print(f"fail_log_file: {fail_log_file}")
+    print(f"n_failures: {n_failures}")
 
-    repeat_test(cmd, n_times, fail_log_file=fail_log_file)
+    repeat_test(cmd, n_times, n_failures=n_failures, fail_log_file=fail_log_file)
 
