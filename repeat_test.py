@@ -99,7 +99,7 @@ if __name__ == "__main__":
         fail_log_file = None
 
     if "n_failures" in config["test"]:
-        n_failures = config["test"]["n_failures"]
+        n_failures = int(config["test"]["n_failures"])
     else:
         n_failures = 1
 
